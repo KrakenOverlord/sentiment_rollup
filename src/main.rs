@@ -4,9 +4,12 @@ use database::Database;
 use dotenv::dotenv;
 use log::{error, info};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     dotenv().ok();
     env_logger::init();
+
+    let database = Database::new();
 }
 
 #[cfg(test)]
