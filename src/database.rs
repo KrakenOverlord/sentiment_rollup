@@ -1,8 +1,8 @@
-use std::str::FromStr;
 use anyhow::Result;
-use dotenv::dotenv;
+use chrono::Utc;
 use sqlx::{MySqlConnection, Connection, types::{BigDecimal, time::{OffsetDateTime, Date}}};
 
+#[derive(Debug)]
 pub struct Event {
     pub id:         i32,
     pub event_id:   String,
@@ -10,6 +10,7 @@ pub struct Event {
     pub created_at: OffsetDateTime,
 }
 
+#[derive(Debug)]
 pub struct Rollup {
     pub id:         i32,
     pub date:       Date,
@@ -29,7 +30,8 @@ impl Database {
     }
 
     pub async fn get_events(&mut self) -> Result<Vec<Event>> {
-        let rows = sqlx::query_as!(Event, "SELECT * FROM events")
+        let date = Utc::now().date_naive().to_string();
+        let rows = sqlx::query_as!(Event, "SELECT * FROM events WHERE DATE(created_at) < ?", date)
             .fetch_all(&mut self.conn) 
             .await?;
         Ok(rows)
@@ -58,11 +60,21 @@ impl Database {
 
         Ok(())
     }
+
+    pub async fn delete_events(&mut self) -> Result<()> {
+        let date = Utc::now().date_naive().to_string();
+        // sqlx::query!(r#"DELETE FROM events WHERE date < ?"#, date)
+        //     .execute(&mut self.conn)
+        //     .await?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dotenv::dotenv;
 
     #[tokio::test]
     async fn test() {
@@ -71,7 +83,7 @@ mod tests {
         let events = database.get_events().await.unwrap();
 
         for event in events {
-            println!("{}", event.event_id);
+            println!("{:#?}", event);
         }
     }
 
