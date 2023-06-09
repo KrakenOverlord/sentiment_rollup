@@ -3,7 +3,7 @@ mod database;
 use anyhow::Result;
 use database::Database;
 use dotenv::dotenv;
-use log::{error, info};
+use log::info;
 use sqlx::types::{BigDecimal};
 use std::collections::HashMap;
 

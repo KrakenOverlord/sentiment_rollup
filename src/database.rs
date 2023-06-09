@@ -63,9 +63,9 @@ impl Database {
 
     pub async fn delete_events(&mut self) -> Result<()> {
         let date = Utc::now().date_naive().to_string();
-        // sqlx::query!(r#"DELETE FROM events WHERE date < ?"#, date)
-        //     .execute(&mut self.conn)
-        //     .await?;
+        sqlx::query!(r#"DELETE FROM events WHERE DATE(created_at) < ?"#, date)
+            .execute(&mut self.conn)
+            .await?;
 
         Ok(())
     }
