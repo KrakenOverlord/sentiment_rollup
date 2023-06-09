@@ -1,19 +1,8 @@
-# sentiment_collector
+# sentiment_rollup
 
 ---
 
-sentiment_collector subscribes to nostr relays to receive all TextNote events from each one. If the content contains the word `bitcoin`, it quantifies the sentiment using one of the user configurable sentiment analysis tools:
-
-1. vader_sentiment crate
-1. OpenAI API
-1. Bard API
-
-It then records the event ID and it's sentiment in one of the user configurable databases:
-
-1. MariaDB
-1. DynamoDB
-
-Sentiment values range from [-1, 1] and event ID's are guaranteed to be unique.
+sentiment_rollup 
 
 ---
 
@@ -96,13 +85,12 @@ DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 CREATE DATABASE sentiment;
 
-CREATE TABLE events(
+CREATE TABLE rollups(
     id INT AUTO_INCREMENT,
-    event_id VARCHAR(256) NOT NULL UNIQUE,
+    date DATE NOT NULL UNIQUE,
     sentiment DECIMAL(2,2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(id),
-    INDEX (created_at)
+    INDEX (date)
 );
 ```
 
