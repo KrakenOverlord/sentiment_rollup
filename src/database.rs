@@ -1,20 +1,23 @@
 use anyhow::Result;
-use chrono::Utc;
-use sqlx::{MySqlConnection, Connection, types::{BigDecimal, time::{OffsetDateTime, Date}}};
+use chrono::{Utc, DateTime, NaiveDate};
+use sqlx::{MySqlConnection, Connection};
+
+// MySQL to Rust datatype mappings:
+// https://docs.rs/sqlx-core/0.6.3/sqlx_core/mysql/types/index.html
 
 #[derive(Debug)]
 pub struct Event {
     pub id:         i32,
     pub event_id:   String,
-    pub sentiment:  BigDecimal,
-    pub created_at: OffsetDateTime,
+    pub sentiment:  f32,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug)]
 pub struct Rollup {
     pub id:         i32,
-    pub date:       Date,
-    pub sentiment:  BigDecimal,
+    pub date:       NaiveDate,
+    pub sentiment:  f32,
 }
 
 #[derive(Debug)]
@@ -30,8 +33,7 @@ impl Database {
     }
 
     pub async fn get_events(&mut self) -> Result<Vec<Event>> {
-        let date = Utc::now().date_naive().to_string();
-        let rows = sqlx::query_as!(Event, "SELECT * FROM events WHERE DATE(created_at) < ?", date)
+        let rows = sqlx::query_as!(Event, "SELECT * FROM events WHERE DATE(created_at) < CURDATE()")
             .fetch_all(&mut self.conn) 
             .await?;
         Ok(rows)
@@ -45,7 +47,7 @@ impl Database {
         Ok(res)
     }
 
-    pub async fn insert_rollup(&mut self, date: &str, sentiment: &BigDecimal) -> Result<()> {
+    pub async fn insert_rollup(&mut self, date: &str, sentiment: f32) -> Result<()> {
         sqlx::query!(r#"INSERT INTO rollups (date, sentiment) VALUES (?, ?)"#, date, sentiment)
             .execute(&mut self.conn)
             .await?;
@@ -53,7 +55,7 @@ impl Database {
         Ok(())
     }
 
-    pub async fn update_rollup(&mut self, date: &str, sentiment: &BigDecimal) -> Result<()> {
+    pub async fn update_rollup(&mut self, date: &str, sentiment: f32) -> Result<()> {
         sqlx::query!(r#"UPDATE rollups SET sentiment = ? WHERE date = ?"#, sentiment, date)
             .execute(&mut self.conn)
             .await?;

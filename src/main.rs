@@ -4,7 +4,6 @@ use anyhow::Result;
 use database::Database;
 use dotenv::dotenv;
 use log::info;
-use sqlx::types::{BigDecimal};
 use std::collections::HashMap;
 
 #[tokio::main]
@@ -27,10 +26,10 @@ async fn main() -> Result<()> {
         match rollup {
             Some(r) => {
                 let next_value = r.sentiment + value;
-                database.update_rollup(date, &next_value).await?;
+                database.update_rollup(date, next_value).await?;
             },
             None => {
-                database.insert_rollup(date, value).await?;
+                database.insert_rollup(date, *value).await?;
             },
         }
     }
@@ -41,11 +40,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn get_rollups(database: &mut Database) -> Result<HashMap<String, BigDecimal>> {
+async fn get_rollups(database: &mut Database) -> Result<HashMap<String, f32>> {
     let events = database.get_events().await?;
     info!("Found {} events.", events.len());
 
-    let mut rollups: HashMap<String, BigDecimal> = HashMap::new();
+    let mut rollups: HashMap<String, f32> = HashMap::new();
     for event in events {
         // Create a key
         let date = event.created_at.date().to_string();

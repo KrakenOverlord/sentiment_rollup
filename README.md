@@ -15,7 +15,7 @@ sentiment_rollup retrieves all events prior to todays date UTC from the events t
 
 ### Setup
 
-**See sentiment_collector for previous setup instructions.**
+**See sentiment_collector for server setup instructions.**
 
 
 #### 1. Create Table
@@ -24,7 +24,7 @@ sentiment_rollup retrieves all events prior to todays date UTC from the events t
 CREATE TABLE rollups(
     id INT AUTO_INCREMENT,
     date DATE NOT NULL UNIQUE,
-    sentiment DECIMAL(10,2) NOT NULL,
+    sentiment FLOAT(7,2) NOT NULL,
     PRIMARY KEY(id),
     INDEX (date)
 );
