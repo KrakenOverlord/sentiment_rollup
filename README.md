@@ -57,7 +57,7 @@ $ scp -i "~/.ssh/ec2.pem" .env ec2-user@ec2-***REMOVED***.us-west-1.compute.amaz
 We need to run sentiment_rollup once a day at midnight. 
 
 ```bash
-0 0 * * * /usr/bin/pkill -f sentiment_rollup; /home/ec2-user/sentiment_rollup/sentiment_rollup & &>/dev/null
+0 0 * * * cd /home/ec2-user/sentiment_rollup && ./sentiment_rollup
 ```
 
 ---
