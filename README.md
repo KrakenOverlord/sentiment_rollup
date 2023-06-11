@@ -2,7 +2,7 @@
 
 ---
 
-sentiment_rollup retrieves all events prior to todays date UTC from the events table and creates/updates the rollups table with the sum of all sentiment for each date.
+sentiment_rollup retrieves all events prior to todays date UTC from the events table and creates/updates rollup records with the sentiment totals for each day.
 
 ---
 

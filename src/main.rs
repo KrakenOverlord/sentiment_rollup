@@ -40,6 +40,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+// Returns a HashMap for every day prior to today (UTC) with corresponding sentiment totals
 async fn get_rollups(database: &mut Database) -> Result<HashMap<String, f32>> {
     let events = database.get_events().await?;
     info!("Found {} events.", events.len());
@@ -47,7 +48,7 @@ async fn get_rollups(database: &mut Database) -> Result<HashMap<String, f32>> {
     let mut rollups: HashMap<String, f32> = HashMap::new();
     for event in events {
         // Create a key
-        let date = event.created_at.date().to_string();
+        let date = event.created_at.date_naive().to_string();
 
         // Get new sentiment value
         let current_value = rollups.get(&date);

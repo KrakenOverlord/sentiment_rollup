@@ -32,6 +32,7 @@ impl Database {
         Ok(Database { conn })
     }
 
+    // Returns all events created before today UTC
     pub async fn get_events(&mut self) -> Result<Vec<Event>> {
         let rows = sqlx::query_as!(Event, "SELECT * FROM events WHERE DATE(created_at) < CURDATE()")
             .fetch_all(&mut self.conn) 
