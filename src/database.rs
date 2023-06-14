@@ -17,6 +17,7 @@ pub struct Event {
 pub struct Rollup {
     pub id:         i32,
     pub date:       NaiveDate,
+    pub price:      i32,
     pub sentiment:  f32,
 }
 

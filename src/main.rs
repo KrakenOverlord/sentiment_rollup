@@ -4,7 +4,19 @@ use anyhow::Result;
 use database::Database;
 use dotenv::dotenv;
 use log::info;
+use serde::Deserialize;
 use std::collections::HashMap;
+
+#[derive(Deserialize)]
+struct Price {
+    usd: i32,
+}
+
+// {"bitcoin":{"usd":25818}}
+#[derive(Deserialize)]
+struct Bitcoin {
+    bitcoin: Price,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -13,6 +25,8 @@ async fn main() -> Result<()> {
 
     // Initialize database
     let mut database = Database::new().await?;
+
+    // Get bitcoin prices
 
     // Get rollups
     let rollups = get_rollups(&mut database).await?;
@@ -38,6 +52,17 @@ async fn main() -> Result<()> {
     database.delete_events().await?;
 
     Ok(())
+}
+
+// GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
+// {"bitcoin":{"usd":25818}}
+async fn get_bitcoin_prices() -> Result<Vec<i32>> {
+    let body = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+        .await?
+        .json()
+        .await?;
+
+    Ok(vec![])
 }
 
 // Returns a HashMap for every day prior to today (UTC) with corresponding sentiment totals
@@ -75,6 +100,18 @@ mod tests {
         for rollup in rollups {
             println!("{:#?}", rollup);
         }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test2() -> Result<()> {
+        let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+            .await?
+            .json::<Bitcoin>()
+            .await?;
+
+        println!("{:?}", res.bitcoin.usd);
 
         Ok(())
     }
