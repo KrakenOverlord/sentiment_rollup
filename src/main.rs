@@ -27,6 +27,7 @@ async fn main() -> Result<()> {
     let mut database = Database::new().await?;
 
     // Get bitcoin prices
+    let price = get_bitcoin_price().await?;
 
     // Get rollups
     let rollups = get_rollups(&mut database).await?;
@@ -40,10 +41,10 @@ async fn main() -> Result<()> {
         match rollup {
             Some(r) => {
                 let next_value = r.sentiment + value;
-                database.update_rollup(date, next_value).await?;
+                database.update_rollup(date, price, next_value).await?;
             },
             None => {
-                database.insert_rollup(date, *value).await?;
+                database.insert_rollup(date, price, *value).await?;
             },
         }
     }
@@ -56,13 +57,13 @@ async fn main() -> Result<()> {
 
 // GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
 // {"bitcoin":{"usd":25818}}
-async fn get_bitcoin_prices() -> Result<Vec<i32>> {
-    let body = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+async fn get_bitcoin_price() -> Result<i32> {
+    let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
         .await?
-        .json()
+        .json::<Bitcoin>()
         .await?;
 
-    Ok(vec![])
+    Ok(res.bitcoin.usd)
 }
 
 // Returns a HashMap for every day prior to today (UTC) with corresponding sentiment totals

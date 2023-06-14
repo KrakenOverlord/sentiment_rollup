@@ -49,16 +49,16 @@ impl Database {
         Ok(res)
     }
 
-    pub async fn insert_rollup(&mut self, date: &str, sentiment: f32) -> Result<()> {
-        sqlx::query!(r#"INSERT INTO rollups (date, sentiment) VALUES (?, ?)"#, date, sentiment)
+    pub async fn insert_rollup(&mut self, date: &str, price: i32, sentiment: f32) -> Result<()> {
+        sqlx::query!(r#"INSERT INTO rollups (date, price, sentiment) VALUES (?, ?, ?)"#, date, price, sentiment)
             .execute(&mut self.conn)
             .await?;
 
         Ok(())
     }
 
-    pub async fn update_rollup(&mut self, date: &str, sentiment: f32) -> Result<()> {
-        sqlx::query!(r#"UPDATE rollups SET sentiment = ? WHERE date = ?"#, sentiment, date)
+    pub async fn update_rollup(&mut self, date: &str, price: i32, sentiment: f32) -> Result<()> {
+        sqlx::query!(r#"UPDATE rollups SET price = ?, sentiment = ? WHERE date = ?"#, price, sentiment, date)
             .execute(&mut self.conn)
             .await?;
 
