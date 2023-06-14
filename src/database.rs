@@ -57,8 +57,8 @@ impl Database {
         Ok(())
     }
 
-    pub async fn update_rollup(&mut self, date: &str, price: i32, sentiment: f32) -> Result<()> {
-        sqlx::query!(r#"UPDATE rollups SET price = ?, sentiment = ? WHERE date = ?"#, price, sentiment, date)
+    pub async fn update_rollup(&mut self, date: &str, sentiment: f32) -> Result<()> {
+        sqlx::query!(r#"UPDATE rollups SET sentiment = ? WHERE date = ?"#, sentiment, date)
             .execute(&mut self.conn)
             .await?;
 

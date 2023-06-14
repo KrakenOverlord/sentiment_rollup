@@ -62,15 +62,14 @@ async fn main() -> Result<()> {
 
     // Create/update rollups in database
     for (date, value) in rollups.iter() {
-        let price = get_historical_bitcoin_price(date).await?;
-
         let rollup = database.get_rollup(date).await?;
         match rollup {
             Some(r) => {
                 let next_value = r.sentiment + value;
-                database.update_rollup(date, price, next_value).await?;
+                database.update_rollup(date, next_value).await?;
             },
             None => {
+                let price = get_historical_bitcoin_price(date).await?;
                 database.insert_rollup(date, price, *value).await?;
             },
         }
