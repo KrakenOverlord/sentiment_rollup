@@ -35,7 +35,7 @@ impl Database {
 
     // Returns all events created before today UTC
     pub async fn get_events(&mut self) -> Result<Vec<Event>> {
-        let rows = sqlx::query_as!(Event, "SELECT * FROM events WHERE DATE(created_at) < CURDATE()")
+        let rows = sqlx::query_as!(Event, "SELECT * FROM events")
             .fetch_all(&mut self.conn) 
             .await?;
         Ok(rows)
@@ -65,8 +65,10 @@ impl Database {
         Ok(())
     }
 
-    pub async fn delete_events(&mut self) -> Result<()> {
-        sqlx::query!(r#"DELETE FROM events WHERE DATE(created_at) < CURDATE()"#)
+    pub async fn delete_events(&mut self, ids: &Vec<i32>) -> Result<()> {
+        let joined_ids = ids.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(",");
+        let query = format!("DELETE FROM events WHERE id IN ({})", joined_ids);
+        sqlx::query(&query)
             .execute(&mut self.conn)
             .await?;
 

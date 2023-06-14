@@ -1,21 +1,45 @@
 mod database;
 
 use anyhow::Result;
-use database::Database;
+use chrono::{NaiveDate, Utc};
+use database::{Database, Event};
 use dotenv::dotenv;
-use log::info;
+use log::{info, debug};
 use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(Deserialize)]
-struct Price {
-    usd: i32,
-}
+// Response structs for: GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
+// {
+//     "bitcoin": {
+//         "usd": 25818
+//     }
+// }
+// #[derive(Deserialize)]
+// struct Bitcoin {
+//     bitcoin: Price,
+// }
 
-// {"bitcoin":{"usd":25818}}
+// #[derive(Deserialize)]
+// struct Price {
+//     usd: i32,
+// }
+
+// Response structs for: GET api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=daily
+// {
+//     "prices": [
+//       [
+//         1686700800000,
+//         25872.20645879509
+//       ],
+//       [
+//         1686755836000,
+//         25992.30353210715
+//       ]
+//     ]
+// }
 #[derive(Deserialize)]
-struct Bitcoin {
-    bitcoin: Price,
+struct HistoricalBitcoin {
+    prices: Vec<Vec<f32>>,
 }
 
 #[tokio::main]
@@ -26,17 +50,20 @@ async fn main() -> Result<()> {
     // Initialize database
     let mut database = Database::new().await?;
 
-    // Get bitcoin prices
-    let price = get_bitcoin_price().await?;
+    // Get all events
+    let events = database.get_events().await?;
+    info!("Found {} events.", events.len());
 
     // Get rollups
-    let rollups = get_rollups(&mut database).await?;
-    for (date, _) in rollups.iter() {
-        info!("Processing rollup for {}", date);
+    let rollups = get_rollups(&events).await?;
+    for rollup in rollups.iter() {
+        info!("{:?}", rollup);
     }
 
     // Create/update rollups in database
     for (date, value) in rollups.iter() {
+        let price = get_historical_bitcoin_price(date).await?;
+
         let rollup = database.get_rollup(date).await?;
         match rollup {
             Some(r) => {
@@ -49,40 +76,57 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Delete all events prior to today
-    database.delete_events().await?;
+    // Delete all processed events
+    let ids = events.iter().map(|v| v.id).collect();
+    database.delete_events(&ids).await?;
 
     Ok(())
 }
 
 // GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
 // {"bitcoin":{"usd":25818}}
-async fn get_bitcoin_price() -> Result<i32> {
-    let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+// async fn get_bitcoin_price() -> Result<i32> {
+//     let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+//         .await?
+//         .json::<Bitcoin>()
+//         .await?;
+
+//     Ok(res.bitcoin.usd)
+// }
+
+// GET api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=daily
+// Returns prices for every day since the date you specify
+async fn get_historical_bitcoin_price(date: &str) -> Result<i32> {
+    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
+    let current_date = Utc::now().date_naive();
+    let days_ago = (current_date - naive_date).num_days();
+
+    let query = format!("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={}&interval=daily", days_ago);
+    let res = reqwest::get(query)
         .await?
-        .json::<Bitcoin>()
+        .json::<HistoricalBitcoin>()
         .await?;
 
-    Ok(res.bitcoin.usd)
+    let price = *res.prices.first().unwrap().last().unwrap() as i32;
+    debug!("Price was ${} on {}", price, date);
+    Ok(price)
 }
 
-// Returns a HashMap for every day prior to today (UTC) with corresponding sentiment totals
-async fn get_rollups(database: &mut Database) -> Result<HashMap<String, f32>> {
-    let events = database.get_events().await?;
-    info!("Found {} events.", events.len());
-
+// Returns a HashMap with all events grouped by date with summed sentiment
+async fn get_rollups(events: &Vec<Event>) -> Result<HashMap<String, f32>> {
     let mut rollups: HashMap<String, f32> = HashMap::new();
     for event in events {
         // Create a key
         let date = event.created_at.date_naive().to_string();
 
-        // Get new sentiment value
+        // Calculate sentiment value
         let current_value = rollups.get(&date);
         let next_value = match current_value {
             Some(v) => v + event.sentiment,
             None => event.sentiment,
         };
 
+        // Add key/value to map
         rollups.insert(date, next_value);
     }
     return Ok(rollups);
@@ -90,30 +134,43 @@ async fn get_rollups(database: &mut Database) -> Result<HashMap<String, f32>> {
 
 #[cfg(test)]
 mod tests {
+    use chrono::Duration;
+
     use super::*;
 
-    #[tokio::test]
-    async fn test() -> Result<()> {
-        dotenv().ok();
+    // INSERT INTO `events` (event_id, sentiment, created_at)
+    // VALUES
+    //     (1, -0.01, '2023-06-10 00:00:28'),
+    //     (2, -0.1, '2023-06-10 00:01:39'),
+    //     (3, 0.22, '2023-06-12 00:02:00'),
+    //     (4, -0.2, '2023-06-14 00:02:00'),
+    //     (5, 0.53, '2023-06-14 00:02:06');
+    // #[tokio::test]
+    // async fn test() -> Result<()> {
+    //     dotenv().ok();
+    //     let mut database = Database::new().await?;
 
-        let mut database = Database::new().await?;
-        let rollups = get_rollups(&mut database).await?;
-        for rollup in rollups {
-            println!("{:#?}", rollup);
-        }
+    //     database.insert_rollup("2023-06-01", price: i32, sentiment: f32)
+    //     database.insert_rollup(date: &str, price: i32, sentiment: f32)
+    //     database.insert_rollup(date: &str, price: i32, sentiment: f32)
 
-        Ok(())
-    }
+    //     // let rollups = get_rollups(&mut database).await?;
+    //     // for rollup in rollups {
+    //     //     println!("{:#?}", rollup);
+    //     // }
 
-    #[tokio::test]
-    async fn test2() -> Result<()> {
-        let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
-            .await?
-            .json::<Bitcoin>()
-            .await?;
+    //     Ok(())
+    // }
 
-        println!("{:?}", res.bitcoin.usd);
+    // #[tokio::test]
+    // async fn test_coingecko_api() -> Result<()> {
+    //     let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+    //         .await?
+    //         .json::<Bitcoin>()
+    //         .await?;
 
-        Ok(())
-    }
+    //     println!("{:?}", res.bitcoin.usd);
+
+    //     Ok(())
+    // }
 }
