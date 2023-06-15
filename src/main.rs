@@ -53,6 +53,9 @@ async fn main() -> Result<()> {
     // Get all events
     let events = database.get_events().await?;
     info!("Found {} events.", events.len());
+    if events.len() == 0 {
+        return Ok(());
+    }
 
     // Get rollups
     let rollups = get_rollups(&events).await?;
