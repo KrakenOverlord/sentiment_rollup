@@ -73,7 +73,7 @@ async fn get_historical_bitcoin_price(date: &str) -> Result<i32> {
     let client = reqwest::Client::new();
     let res = client
         .get(query)
-        .header("X-CoinAPI-Key", "9F4A5821-3F4F-4955-8FC2-2FEF6FDDE7F3")
+        .header("X-CoinAPI-Key", std::env::var("COINAPI_KEY")?)
         .send()
         .await?
         .text()
