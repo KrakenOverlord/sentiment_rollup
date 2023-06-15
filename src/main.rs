@@ -1,46 +1,11 @@
 mod database;
 
 use anyhow::Result;
-use chrono::{NaiveDate, Utc};
 use database::{Database, Event};
 use dotenv::dotenv;
 use log::{info, debug};
-use serde::Deserialize;
+use serde_json::{self, Value};
 use std::collections::HashMap;
-
-// Response structs for: GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
-// {
-//     "bitcoin": {
-//         "usd": 25818
-//     }
-// }
-// #[derive(Deserialize)]
-// struct Bitcoin {
-//     bitcoin: Price,
-// }
-
-// #[derive(Deserialize)]
-// struct Price {
-//     usd: i32,
-// }
-
-// Response structs for: GET api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=daily
-// {
-//     "prices": [
-//       [
-//         1686700800000,
-//         25872.20645879509
-//       ],
-//       [
-//         1686755836000,
-//         25992.30353210715
-//       ]
-//     ]
-// }
-#[derive(Deserialize)]
-struct HistoricalBitcoin {
-    prices: Vec<Vec<f32>>,
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -85,40 +50,38 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-// GET https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
-// {"bitcoin":{"usd":25818}}
-// async fn get_bitcoin_price() -> Result<i32> {
-//     let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
-//         .await?
-//         .json::<Bitcoin>()
-//         .await?;
-
-//     Ok(res.bitcoin.usd)
-// }
-
-// GET api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=daily
-// Returns prices for every day since the date you specify
-// {
-//     "prices": [
-//       [
-//         1686787724000,
-//         25083.61354357484
-//       ]
-//     ]
-// }
+// GET 'https://rest.coinapi.io/v1/ohlcv/BITSTAMP_SPOT_BTC_USD/history?period_id=1DAY&time_start=2023-06-13T00:00:00&limit=1' 
+// Header "X-CoinAPI-Key: 9F4A5821-3F4F-4955-8FC2-2FEF6FDDE7F3" 
+// [
+//   {
+//     "time_period_start": "2023-06-13T00:00:00.0000000Z",
+//     "time_period_end": "2023-06-14T00:00:00.0000000Z",
+//     "time_open": "2023-06-13T00:00:04.4060000Z",
+//     "time_close": "2023-06-13T23:59:56.5310000Z",
+//     "price_open": 25906,
+//     "price_high": 26422,
+//     "price_low": 25718,
+//     "price_close": 25934,
+//     "volume_traded": 1895.95998407,
+//     "trades_count": 15847
+//   }
+// ]
 async fn get_historical_bitcoin_price(date: &str) -> Result<i32> {
-    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
-    let current_date = Utc::now().date_naive();
-    let days_ago = (current_date - naive_date).num_days();
+    let start_time = format!("{}T00:00:00", date);
+    let query = format!("https://rest.coinapi.io/v1/ohlcv/BITSTAMP_SPOT_BTC_USD/history?period_id=1DAY&time_start={}&limit=1", start_time);
 
-    let query = format!("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={}&interval=daily", days_ago);
-    let res = reqwest::get(query)
+    let client = reqwest::Client::new();
+    let res = client
+        .get(query)
+        .header("X-CoinAPI-Key", "9F4A5821-3F4F-4955-8FC2-2FEF6FDDE7F3")
+        .send()
         .await?
-        .json::<HistoricalBitcoin>()
+        .text()
         .await?;
 
-    let price = *res.prices.first().unwrap().last().unwrap() as i32;
-    debug!("Price was ${} on {}", price, date);
+    let v: Value = serde_json::from_str(&res)?;
+    let price = v[0]["price_close"].to_string().parse::<i32>().unwrap();
+
     Ok(price)
 }
 
@@ -160,28 +123,28 @@ mod tests {
         dotenv().ok();
 
         let price = get_historical_bitcoin_price("2023-06-13").await?;
-        assert_eq!(price, 25872);
+        assert_eq!(price, 25934);
 
         let price = get_historical_bitcoin_price("2023-06-14").await?;
-        assert_eq!(price, 25107);
+        assert_eq!(price, 25127);
 
         let price = get_historical_bitcoin_price("2023-06-15").await?;
-        assert_eq!(price, 25107);
+        assert_eq!(price, 25051);
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_coingecko_api() -> Result<()> {
-        let days_ago = 5;
-        let query = format!("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={}&interval=daily", days_ago);
-        let res = reqwest::get(query)
-            .await?
-            .json::<HistoricalBitcoin>()
-            .await?;
+    // #[tokio::test]
+    // async fn test_coingecko_api() -> Result<()> {
+    //     let days_ago = 5;
+    //     let query = format!("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={}&interval=daily", days_ago);
+    //     let res = reqwest::get(query)
+    //         .await?
+    //         .json::<HistoricalBitcoin>()
+    //         .await?;
 
-        let price = *res.prices.first().unwrap().last().unwrap() as i32;
-        println!("Price = {}", price);
+    //     let price = *res.prices.first().unwrap().last().unwrap() as i32;
+    //     println!("Price = {}", price);
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }
