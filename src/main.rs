@@ -98,6 +98,14 @@ async fn main() -> Result<()> {
 
 // GET api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=daily
 // Returns prices for every day since the date you specify
+// {
+//     "prices": [
+//       [
+//         1686787724000,
+//         25083.61354357484
+//       ]
+//     ]
+// }
 async fn get_historical_bitcoin_price(date: &str) -> Result<i32> {
     let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
     let current_date = Utc::now().date_naive();
@@ -147,32 +155,33 @@ mod tests {
     //     (3, 0.22, '2023-06-12 00:02:00'),
     //     (4, -0.2, '2023-06-14 00:02:00'),
     //     (5, 0.53, '2023-06-14 00:02:06');
-    // #[tokio::test]
-    // async fn test() -> Result<()> {
-    //     dotenv().ok();
-    //     let mut database = Database::new().await?;
+    #[tokio::test]
+    async fn test() -> Result<()> {
+        dotenv().ok();
 
-    //     database.insert_rollup("2023-06-01", price: i32, sentiment: f32)
-    //     database.insert_rollup(date: &str, price: i32, sentiment: f32)
-    //     database.insert_rollup(date: &str, price: i32, sentiment: f32)
+        let price = get_historical_bitcoin_price("2023-06-13").await?;
+        assert_eq!(price, 25872);
 
-    //     // let rollups = get_rollups(&mut database).await?;
-    //     // for rollup in rollups {
-    //     //     println!("{:#?}", rollup);
-    //     // }
+        let price = get_historical_bitcoin_price("2023-06-14").await?;
+        assert_eq!(price, 25107);
 
-    //     Ok(())
-    // }
+        let price = get_historical_bitcoin_price("2023-06-15").await?;
+        assert_eq!(price, 25107);
+        Ok(())
+    }
 
-    // #[tokio::test]
-    // async fn test_coingecko_api() -> Result<()> {
-    //     let res = reqwest::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
-    //         .await?
-    //         .json::<Bitcoin>()
-    //         .await?;
+    #[tokio::test]
+    async fn test_coingecko_api() -> Result<()> {
+        let days_ago = 5;
+        let query = format!("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={}&interval=daily", days_ago);
+        let res = reqwest::get(query)
+            .await?
+            .json::<HistoricalBitcoin>()
+            .await?;
 
-    //     println!("{:?}", res.bitcoin.usd);
+        let price = *res.prices.first().unwrap().last().unwrap() as i32;
+        println!("Price = {}", price);
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 }
