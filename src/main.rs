@@ -3,7 +3,7 @@ mod database;
 use anyhow::Result;
 use database::{Database, Event};
 use dotenv::dotenv;
-use log::{info, debug};
+use log::info;
 use serde_json::{self, Value};
 use std::collections::HashMap;
 
