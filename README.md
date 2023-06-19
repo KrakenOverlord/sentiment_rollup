@@ -51,5 +51,5 @@ $ ./scripts/build.sh
 Run sentiment_rollup every hour.
 
 ```bash
-0 * * * * cd /home/ec2-user/sentiment_rollup && ./sentiment_rollup
+0 * * * * cd [path]/sentiment_rollup && ./sentiment_rollup
 ```
