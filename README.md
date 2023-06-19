@@ -2,20 +2,20 @@
 
 ---
 
-sentiment_rollup retrieves all events from the sentiment database events table and creates/updates rollup records with the sentiment totals for each day.
+*Background: The sentiment_collector is constantly creating new `event` records in the `sentiment` database for each Nostr text note event that contains relevant bitcoin content. The event records contain a quantized sentiment value for the bitcoin content.*
 
----
+**sentiment_rollup** creates new `rollup` records with cumulative sentiment totals for each date along with the current bitcoin price. It then deletes the processed event records.
 
 ## Setup Overview
 
 1. Create Table
-1. Install source code
+1. Install Source Code
 1. Build
 1. Cron
 
 ### Setup
 
-**See sentiment_collector for server setup instructions.**
+*See sentiment_collector for server and database setup instructions.*
 
 
 #### 1. Create Table
@@ -32,32 +32,24 @@ CREATE TABLE rollups(
 
 #### 2. Install Source Code
 
-Clone the repo on the EC2 instance.
+Clone the sentiment_rollup repo on the server.
 
 ```bash
 $ git clone git@github.com:KrakenOverlord/sentiment_rollup.git
 ```
 
-Don't forget to copy `.env` to the EC2 instance.
-
-```bash
-$ scp -i "~/.ssh/ec2.pem" .env ec2-user@ec2-***REMOVED***.us-west-1.compute.amazonaws.com:~/sentiment_rollup
-
-```
+Then create a `.env` file from the `.env.sample` file.
 
 #### 3. Build
 
-**Build**
 
 ```bash
-./scripts/build.sh
+$ ./scripts/build.sh
 ```
 
-#### 4. Crontab
-We need to run sentiment_rollup once a day at midnight. 
+#### 4. Cron
+Run sentiment_rollup every hour.
 
 ```bash
-0 0 * * * cd /home/ec2-user/sentiment_rollup && ./sentiment_rollup
+0 * * * * cd /home/ec2-user/sentiment_rollup && ./sentiment_rollup
 ```
-
----
