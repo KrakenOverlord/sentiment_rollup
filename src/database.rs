@@ -82,21 +82,14 @@ mod tests {
     use dotenv::dotenv;
 
     #[tokio::test]
-    async fn test() {
+    async fn test() -> Result<()> {
         dotenv().ok();
-        let mut database = Database::new().await.unwrap();
-        let events = database.get_events().await.unwrap();
+        let mut database = Database::new().await?;
+        let events = database.get_events().await?;
 
         for event in events {
             println!("{:#?}", event);
         }
-    }
-
-    #[tokio::test]
-    async fn test2() {
-        let f1 = 0.1;
-        let f2 = 0.2;
-        let sum = f1 + f2;
-        println!("{}", sum);
+        Ok(())
     }
 }
