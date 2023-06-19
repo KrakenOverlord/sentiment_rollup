@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 }
 
 // This will return the closing price for the specified date.
-// If the specified date is today, then the closing price is the current price.
+// If the specified date is today, then it returns the current price.
 // 
 // GET 'https://rest.coinapi.io/v1/ohlcv/BITSTAMP_SPOT_BTC_USD/history?period_id=1DAY&time_start=2023-06-13T00:00:00&limit=1' 
 // Header "X-CoinAPI-Key: [API KEY]" 
